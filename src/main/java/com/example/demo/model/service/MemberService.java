@@ -12,6 +12,8 @@ import com.example.demo.model.repository.MemberRepository;
 import org.springframework.security.core.userdetails.*; // User, UserDetails 등
 import org.springframework.security.access.prepost.PreAuthorize;
 import java.util.Optional;
+import com.example.demo.model.repository.PostRepository;
+import com.example.demo.model.repository.CommentRepository;
 
 @Service // 서비스 등록
 public class MemberService implements UserDetailsService {
@@ -19,14 +21,18 @@ public class MemberService implements UserDetailsService {
     private MemberRepository memberRepository;
     @Autowired // SecurityConfig 에 등록한 BCryptPasswordEncoder 주입
     private PasswordEncoder passwordEncoder;
+    @Autowired // ① 필드 추가
+    private PostRepository postRepository;
+    @Autowired
+    private CommentRepository commentRepository;
 
     private static final List<String> ROLES = List.of("USER", "ADMIN");
 
     public Member signup(MemberForm form) {
         if (isBlank(form.getUsername()) || isBlank(form.getPassword()) || isBlank(form.getName())) {
-throw new IllegalArgumentException("아이디, 비밀번호, 이름은 필수입니다.");
-}
-         // 회원가입
+            throw new IllegalArgumentException("아이디, 비밀번호, 이름은 필수입니다.");
+        }
+        // 회원가입
         if (memberRepository.existsByUsername(form.getUsername())) {
             throw new IllegalArgumentException("이미 사용 중인 아이디입니다.");
         }
@@ -42,7 +48,7 @@ throw new IllegalArgumentException("아이디, 비밀번호, 이름은 필수입
     public UserDetails loadUserByUsername(String username)
             throws UsernameNotFoundException {
         Member member = memberRepository.findByUsername(username)
-            .orElseThrow(() -> new UsernameNotFoundException("회원 없음 : " + username));
+                .orElseThrow(() -> new UsernameNotFoundException("회원 없음 : " + username));
         return User.builder() // 시큐리티용 사용자 객체로 변환
                 .username(member.getUsername())
                 .password(member.getPassword()) // 암호화 값 → matches()로 비교
@@ -53,33 +59,41 @@ throw new IllegalArgumentException("아이디, 비밀번호, 이름은 필수입
     // MemberService : 로그인한 아이디로 회원 조회
     public Member findByUsername(String username) {
         return memberRepository.findByUsername(username)
-        .orElseThrow(() -> new IllegalArgumentException(
-        "회원이 존재하지 않습니다 : " + username));
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "회원이 존재하지 않습니다 : " + username));
     }
 
     public List<Member> findAll() { // MemberService : 전체 회원 (id 순서)
         return memberRepository.findAll(Sort.by("id"));
     }
+
     @PreAuthorize("hasRole('ADMIN')") // 관리자만 실행 가능 (2차 잠금
     public Member changeRole(Long id, String role) { // 권한 변경
         if (!ROLES.contains(role)) { // 허용된 권한만
-        throw new IllegalArgumentException("허용되지 않는 권한입니다 : " + role);
+            throw new IllegalArgumentException("허용되지 않는 권한입니다 : " + role);
         }
         Member member = memberRepository.findById(id)
-        .orElseThrow(() -> new IllegalArgumentException("회원이 존재하지 않습니다."));
+                .orElseThrow(() -> new IllegalArgumentException("회원이 존재하지 않습니다."));
         member.setRole(role);
         return memberRepository.save(member); // UPDATE (id 가 있으면 수정)
     }
+
     @PreAuthorize("hasRole('ADMIN')") // 관리자만 실행 가능 (2차 잠금
     public void deleteMember(Long id) { // 회원 삭제
         Member member = memberRepository.findById(id)
-        .orElseThrow(() -> new IllegalArgumentException("회원이 존재하지 않습니다."));
+                .orElseThrow(() -> new IllegalArgumentException("회원이 존재하지 않습니다."));
+        if (postRepository.existsByAuthor(member) || commentRepository.existsByAuthor(member)) {
+            throw new IllegalArgumentException("작성한 글이나 댓글이 있는 회원은 삭제할 수 없습니다.");
+        }
         memberRepository.delete(member); // DELETE
     }
 
     public Optional<Member> findById(Long id) {
         return memberRepository.findById(id);
     }
-    private boolean isBlank(String value) { return value == null || value.isBlank(); } // 클래스 아래쪽
+
+    private boolean isBlank(String value) {
+        return value == null || value.isBlank();
+    } // 클래스 아래쪽
 
 }

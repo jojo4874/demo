@@ -32,7 +32,9 @@ public class SecurityConfig {
                                 "/login", "/signup", "/error").permitAll()
                                 .requestMatchers("/api/hello").permitAll()
                 .requestMatchers("/css/**", "/js/**", "/images/**", "/fonts/**").permitAll()
+                .requestMatchers("/board", "/board/{id:\\d+}").permitAll() // 게시판 목록·상세 : 누구나
                 .requestMatchers("/admin/**", "/api/admin/**")
+                
 .hasRole("ADMIN") // 관리자만 접근 가능
                 .anyRequest().authenticated())
             .formLogin(form -> form // 2. 폼 로그인 설정 (인증)
