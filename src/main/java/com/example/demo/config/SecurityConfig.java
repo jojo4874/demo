@@ -33,6 +33,7 @@ public class SecurityConfig {
                                 .requestMatchers("/api/hello").permitAll()
                 .requestMatchers("/css/**", "/js/**", "/images/**", "/fonts/**").permitAll()
                 .requestMatchers("/board", "/board/{id:\\d+}").permitAll() // 게시판 목록·상세 : 누구나
+                .requestMatchers("/uploads/**").permitAll() // [11주차] 포스터 이미지 : 누구나 (올리기는 글쓰기라서 로그인)
                 .requestMatchers("/admin/**", "/api/admin/**")
                 
 .hasRole("ADMIN") // 관리자만 접근 가능
