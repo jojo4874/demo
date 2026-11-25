@@ -15,7 +15,6 @@ import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.HttpStatusEntryPoint;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 
-
 @Configuration // 스프링 설정 클래스 등록
 @EnableWebSecurity // 스프링 시큐리티 활성화
 @EnableMethodSecurity // [6주차] 메서드 보안 활성화 : @PreAuthorize 사용
@@ -24,35 +23,41 @@ public class SecurityConfig {
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
     }
+
     @Bean // 보안 필터 체인 등록
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
-            .authorizeHttpRequests(auth -> auth // 1. URL 접근 규칙 (인가)
-                .requestMatchers("/", "/hello", "/detailed_web.html",
-                                "/login", "/signup", "/error").permitAll()
-                                .requestMatchers("/api/hello").permitAll()
-                .requestMatchers("/css/**", "/js/**", "/images/**", "/fonts/**").permitAll()
-                .requestMatchers("/board", "/board/{id:\\d+}").permitAll() // 게시판 목록·상세 : 누구나
-                .requestMatchers("/uploads/**").permitAll() // [11주차] 포스터 이미지 : 누구나 (올리기는 글쓰기라서 로그인)
-                .requestMatchers("/admin/**", "/api/admin/**")
-                
-.hasRole("ADMIN") // 관리자만 접근 가능
-                .anyRequest().authenticated())
-            .formLogin(form -> form // 2. 폼 로그인 설정 (인증)
-                .loginPage("/login")
-                .defaultSuccessUrl("/")
-                .failureUrl("/login?error")
-                .permitAll())
-            .logout(logout -> logout // 3. 로그아웃 설정
-                .logoutUrl("/logout") // 로그아웃 처리 URL (POST)
-                .logoutSuccessUrl("/login?logout") // 로그아웃 후 이동
-                .invalidateHttpSession(true) // 세션 삭제
-                .deleteCookies("JSESSIONID", "remember-me")).httpBasic(Customizer.withDefaults()) // Postman : 요청마다 아이디·비밀번호 (Basic 인증)
+                .authorizeHttpRequests(auth -> auth // 1. URL 접근 규칙 (인가)
+                        .requestMatchers("/", "/hello", "/detailed_web.html",
+                                "/login", "/signup", "/error")
+                        .permitAll()
+                        .requestMatchers("/api/hello").permitAll()
+                        .requestMatchers("/css/**", "/js/**", "/images/**", "/fonts/**").permitAll()
+                        .requestMatchers("/board", "/board/{id:\\d+}").permitAll() // 게시판 목록·상세 : 누구나
+                        .requestMatchers("/uploads/**").permitAll() // [11주차] 포스터 이미지 : 누구나 (올리기는 글쓰기라서 로그인)
+                        .requestMatchers("/ws").permitAll() // [12주차] 실시간 연결 : 누구나
+                        // (남은 자리는 비로그인도 본다, 개인 알림은 로그인한 사람만 받는다)
+
+                        .requestMatchers("/admin/**", "/api/admin/**")
+
+                        .hasRole("ADMIN") // 관리자만 접근 가능
+                        .anyRequest().authenticated())
+                .formLogin(form -> form // 2. 폼 로그인 설정 (인증)
+                        .loginPage("/login")
+                        .defaultSuccessUrl("/")
+                        .failureUrl("/login?error")
+                        .permitAll())
+                .logout(logout -> logout // 3. 로그아웃 설정
+                        .logoutUrl("/logout") // 로그아웃 처리 URL (POST)
+                        .logoutSuccessUrl("/login?logout") // 로그아웃 후 이동
+                        .invalidateHttpSession(true) // 세션 삭제
+                        .deleteCookies("JSESSIONID", "remember-me"))
+                .httpBasic(Customizer.withDefaults()) // Postman : 요청마다 아이디·비밀번호 (Basic 인증)
                 .csrf(csrf -> csrf.ignoringRequestMatchers("/api/**")) // JSON API 는 CSRF 토큰 검사 제외
                 .exceptionHandling(ex -> ex.defaultAuthenticationEntryPointFor( // 로그인 안 한 API 요청 :
-                new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED),           // 로그인 화면(302) 대신 401
-                request -> request.getRequestURI().startsWith("/api/"))); // 쿠키 삭제
-                return http.build();
+                        new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED), // 로그인 화면(302) 대신 401
+                        request -> request.getRequestURI().startsWith("/api/"))); // 쿠키 삭제
+        return http.build();
 
     }
 }
